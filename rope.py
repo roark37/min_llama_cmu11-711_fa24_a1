@@ -56,20 +56,40 @@ def apply_rotary_emb(
     # and Section 3 in https://arxiv.org/abs/2104.09864.
 
     # reshape xq and xk to match the complex representation
-    query_real, query_imag = query.float().reshape(query.shape[:-1] + (-1, 2)).unbind(-1)
-    key_real, key_imag = key.float().reshape(key.shape[:-1] + (-1, 2)).unbind(-1)
-    # This separates each query/key vector into its odd and even indices (assuming *one-indexing*).
-    # query_real contains q_1, q_3, q_5, ... and query_imag contains q_2, q_4, q_6, ...
+    # # This separates each query/key vector into its odd and even indices (assuming *one-indexing*).
+    # # query_real contains q_1, q_3, q_5, ... and query_imag contains q_2, q_4, q_6, ...
+    # query_real, query_imag = query.float().reshape(query.shape[:-1] + (-1, 2)).unbind(-1) 
+    # key_real, key_imag = key.float().reshape(key.shape[:-1] + (-1, 2)).unbind(-1)
 
+    
     # First, compute the trigonometric values in the second and fourth columns in
     # slide 22 (linked above).
 
+    theta_seq = torch.tensor([theta ** (-2*(i-1)/head_dim) for i in range(1, head_dim // 2 + 1)]) # shape: (head_dim/2, )
+    t = torch.arange(max_seq_len).unsqueeze(dim=1)  # t shape: (max_seq_len, 1)
+    theta_t_seq = t * theta_seq  # broadcast, shape (max_seq_len, head_dim/2)
+    cos_real = torch.cos(theta_t_seq).unsqueeze(dim=0)  # shape (1, max_seq_len, head_dim/2)
+    sin_imag = torch.sin(theta_t_seq).unsqueeze(dim=0)  # shape (1, max_seq_len, head_dim/2)
+    cos_sin = torch.cat((cos_real, sin_imag), dim=0).permute(1, 2, 0) # shape (max_seq_len, head_dim/2, 2)
+
+    angle_cut = cos_sin[:seqlen][None, None, ...].contiguous()   # shape (1, 1, T, head_dim/2, 2)
+    angle_complex_view = torch.view_as_complex(angle_cut)
+    
     # Then, combine these trigonometric values with the tensors query_real, query_imag,
     # key_real, and key_imag.
 
-    raise NotImplementedError
+    q_seq = query.float().reshape(query.shape[:-1] + (-1, 2)) # shape: (B, T, localH, head_dim/2, 2)
+    q_seq = q_seq.transpose(1, 2).contiguous()                # shape: (B, localH, T, head_dim/2, 2)
+    q_complex_view = torch.view_as_complex(q_seq)
+    query_out = torch.view_as_real(q_complex_view * angle_complex_view).reshape(q_seq.shape[:-2] + (-1,))
+                                                              # shape: (B, localH, T, head_dim)
+    query_out = query_out.transpose(1, 2)                     # shape: (B, T, localH, head_dim)
 
-    query_out = None
-    key_out = None
+    k_seq = key.float().reshape(query.shape[:-1] + (-1, 2)) # shape: (B, T, localH, head_dim/2, 2)
+    k_seq = k_seq.transpose(1, 2).contiguous()              # shape: (B, localH, T, head_dim/2, 2)    
+    k_complex_view = torch.view_as_complex(k_seq)
+    key_out = torch.view_as_real(k_complex_view * angle_complex_view).reshape(q_seq.shape[:-2] + (-1,))
+                                                            # shape: (B, localH, T, head_dim)
+    key_out = key_out.transpose(1, 2)                       # shape: (B, T, localH, head_dim)
     # Return the rotary position embeddings for the query and key tensors
     return query_out, key_out
