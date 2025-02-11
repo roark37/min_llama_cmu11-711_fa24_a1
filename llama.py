@@ -44,7 +44,9 @@ class RMSNorm(torch.nn.Module):
             torch.Tensor: The normalized tensor.
         """
         # todo
-        raise NotImplementedError
+        # raise NotImplementedError
+        rms_x = torch.sqrt((x ** 2).mean(dim=-1, keepdim=True) + self.eps)
+        return x / rms_x
 
     def forward(self, x):
         """
