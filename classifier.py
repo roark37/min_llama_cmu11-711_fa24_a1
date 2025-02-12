@@ -44,6 +44,7 @@ class LlamaEmbeddingClassifier(torch.nn.Module):
 
 		self.dropout = torch.nn.Dropout(config.hidden_dropout_prob)
 		self.classifier_head = torch.nn.Linear(self.llama.config.dim, self.num_labels)
+		self.config = config
 
 	def forward(self, input_ids):
 		'''
@@ -55,4 +56,14 @@ class LlamaEmbeddingClassifier(torch.nn.Module):
 		3) Take the log-softmax of the logits and return log-probabilities over all classes.
 		'''
 		# todo
-		raise NotImplementedError
+		# raise NotImplementedError
+
+		_, h = self.llama(input_ids)
+		h = h[:, -1, :]
+		if self.config.option == 'pretrain':
+			h = self.dropout(h)
+		logits = self.classifier_head(h)   # input shape (B, T, N); output shape (B, T, num_labels)
+		log_prob = F.log_softmax(logits, dim=-1)
+		return log_prob
+
+		
