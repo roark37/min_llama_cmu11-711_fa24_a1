@@ -69,10 +69,13 @@ class AdamW(Optimizer):
 
                 # Update first and second moments of the gradients
                 # --> use inplace ops for efficiency
-                # same as: exp_avg = beta1 * exp_avg + (1 - beta1) * grad 
+                # same as: 
+                # exp_avg = beta1 * exp_avg + (1 - beta1) * grad 
                 exp_avg.mul_(beta1).add_(grad, alpha=1 - beta1)
-                # same as: exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * (grad ** 2)
+                # same as: 
+                # exp_avg_sq = beta2 * exp_avg_sq + (1 - beta2) * (grad ** 2)
                 exp_avg_sq.mul_(beta2).addcmul_(grad, grad, value=1 - beta2)
+                # exp_avg_sq_eps = exp_avg_sq.sqrt() + eps
                 exp_avg_sq_eps = exp_avg_sq.sqrt().add_(eps)
 
                 # Bias correction
@@ -86,7 +89,8 @@ class AdamW(Optimizer):
 
                 # Update parameters
                 # --> use inplace ops for efficiency
-                # same as: p.data -= step_size * exp_avg / exp_avg_sq_eps
+                # same as: 
+                # p.data -= alpha * exp_avg / exp_avg_sq_eps
                 p.data.addcdiv_(exp_avg, exp_avg_sq_eps, value=-alpha)
 
                 # Add weight decay after the main gradient-based updates.
@@ -98,6 +102,8 @@ class AdamW(Optimizer):
                 # 1. At high lr: weight decay effect becomes relatively insignificant
                 # 2. At low lr: weight decay would dominate the updates
                 if weight_decay != 0:
+                    # same as: 
+                    # p.data -= alpha * weight_decay
                     p.data.add_(p.data, alpha=-alpha * weight_decay)
 
         return loss

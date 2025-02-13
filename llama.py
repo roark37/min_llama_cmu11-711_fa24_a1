@@ -208,8 +208,8 @@ class LlamaLayer(nn.Module):
         '''
         # todo
         # raise NotImplementedError
-        x += self.attention(self.attention_norm(x))
-        x += self.feed_forward(self.ffn_norm(x))
+        x = x + self.attention(self.attention_norm(x))
+        x = x + self.feed_forward(self.ffn_norm(x))
 
         return x
 
@@ -306,11 +306,10 @@ class Llama(LlamaPreTrainedModel):
                 '''
                 temp_logits = logits / temperature              # output shape (b, n_embed)
                 probs = F.softmax(temp_logits, dim=-1)          # output shape (b, n_embed)
-                idx = torch.multinomial(probs, num_samples = 1) # 
+                idx_next = torch.multinomial(probs, num_samples = 1) # 
 
             # append sampled index to the running sequence and continue
             idx = torch.cat((idx, idx_next), dim=1)             # output shape (b, (t+1))
-
 
         return idx
 

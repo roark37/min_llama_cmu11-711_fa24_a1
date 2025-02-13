@@ -73,7 +73,7 @@ def apply_rotary_emb(
     cos_sin = torch.cat((cos_real, sin_imag), dim=0).permute(1, 2, 0) # shape (max_seq_len, head_dim/2, 2)
 
     angle_cut = cos_sin[:seqlen][None, None, ...].contiguous()   # shape (1, 1, T, head_dim/2, 2)
-    angle_complex_view = torch.view_as_complex(angle_cut)
+    angle_complex_view = torch.view_as_complex(angle_cut).to(device)
     
     # Then, combine these trigonometric values with the tensors query_real, query_imag,
     # key_real, and key_imag.
@@ -91,5 +91,6 @@ def apply_rotary_emb(
     key_out = torch.view_as_real(k_complex_view * angle_complex_view).reshape(q_seq.shape[:-2] + (-1,))
                                                             # shape: (B, localH, T, head_dim)
     key_out = key_out.transpose(1, 2)                       # shape: (B, T, localH, head_dim)
+    
     # Return the rotary position embeddings for the query and key tensors
     return query_out, key_out
