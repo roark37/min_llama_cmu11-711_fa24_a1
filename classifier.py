@@ -22,11 +22,13 @@ class LlamaZeroShotClassifier(torch.nn.Module):
 
 	def forward(self, input_ids):
 		# compute the completion probability of each label string
-		logits, _ = self.llama(input_ids)
+		logits, _ = self.llama(input_ids) # shape of logits: (B, T=1, n_embed)
 		log_probabilities = F.log_softmax(logits, dim=-1)
 		label_probabilities = torch.zeros((log_probabilities.shape[0], self.num_labels), device=log_probabilities.device)
-		for i, label_token_ids in enumerate(self.label_name_ids):
-			total_log_prob = torch.sum(log_probabilities[:, :, label_token_ids], axis=-1)
+		# print('==>:', log_probabilities.shape)
+		for i, label_token_ids in enumerate(self.label_name_ids): 
+			total_log_prob = torch.sum(log_probabilities[:, :, label_token_ids], axis=-1) 
+			# label_token_ids is one element list => dim of 'log_probabilities[:, :, label_token_ids]' is 3
 			label_probabilities[:, i] = total_log_prob[:, 0]
 		return label_probabilities
 
